@@ -109,6 +109,7 @@ Behind the scenes, Poppy scans every request for developer secrets (like AWS key
 
 ### Worked example: an AWS key in `test.py`
 
+
 Say `test.py` in your project contains a real AWS access key:
 
 ```python
@@ -120,10 +121,14 @@ You open the Claude Code chat panel in the VS Code extension (pointed at Poppy v
 1. Claude Code reads the file and sends its contents to the model as part of the request. The real key `AKIAOA3G5IRWJCOB7VTK` is now in the outbound JSON body.
 2. Poppy intercepts the request and sanitizes the body before forwarding it.
 3. The sanitizer decodes the JSON and scans every string value against its 100+ secret patterns. The `AWS_ACCESS_KEY_ID` pattern (`AKIA` + 16 alphanumeric characters) matches.
-4. The matched key has no existing mapping yet, so Poppy generates a fake: it keeps the real `AKIA` prefix and replaces the rest with 16 random uppercase letters, e.g. `AKIAQXPLKMZTBNCVWFRS`. The real↔fake pair is stored in the vault.
+4. The matched key has no existing mapping yet, so Poppy generates a fake: it keeps the real `AKIA` prefix and replaces the rest with 16 random uppercase letters, e.g. `AKIASEELXCMTPIKTSSUZ`. The real↔fake pair is stored in the vault.
 5. The real key in the request body is swapped for the fake one, and the sanitized request, with your original auth headers untouched, is forwarded to `api.anthropic.com`. The model only ever sees the fake key.
 6. When the response comes back, Poppy checks it for any fake secrets from the vault (handling this safely even if a streamed response splits the fake key across chunks) and swaps them back for the real ones.
 7. You see Claude's answer referencing your real key, `AKIAOA3G5IRWJCOB7VTK`, even though it never actually reached the API's servers.
+
+![Poppy swapping an AWS key in a live Claude Code session: the assistant panel echoes the real key while the proxy logs show the fake sent upstream](images/awskey.jpg)
+
+Both halves of the swap are visible above. On the right, Claude Code reads `test.py` and reports the real key back to you — from your side, nothing changed. On the left, Poppy's logs show what actually crossed the network: `Swapped 'AKIAOA3G5IRWJCOB7VTK' -> 'AKIASEELXCMTPIKTSSUZ' before sending to LLM`, then `Rehydrated fake secret 'AKIASEELXCMTPIKTSSUZ' back to real secret in stream!` on the way back. The model reasoned about a well-formed AWS key the whole time; it just wasn't yours.
 
 ## Configuring detection rules
 
@@ -154,6 +159,14 @@ curl -H "Authorization: Bearer gsk_ndlpXLycSz3N1FWVUOoTfZM2jkOJUxtaugG3fV4uwTS7c
 Now the same request leaves your machine carrying `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` instead. Claude still sees a well-formed Groq key in a well-formed curl command, so it can still tell you the header is malformed or the endpoint is wrong — and Poppy restores the real key before the answer reaches you.
 
 That's the whole workflow: one pattern, one generator, restart. Everything below is reference.
+
+### A custom rule, running
+
+Nothing about this is specific to API keys — a rule can catch any string you don't want leaving your machine. Here a one-line rule named `DUMMY_HUMBLELAD` matches the literal word `humblelad` and swaps it for `fake_name`:
+
+![A custom Poppy rule at work: Claude Code reads name.txt and reports the real contents, while the proxy log shows the word humblelad swapped for fake_name before it was sent upstream](images/vscode_chat.jpg)
+
+`name.txt` contains `humblelad` and `alex`. Claude Code reads it and reports both back correctly, because the proxy reversed the swap before the response rendered. The log underneath shows what the model actually received: `[DUMMY_HUMBLELAD] Swapped 'humblelad' -> 'fake_name' before sending to LLM`, then `Rehydrated fake secret 'fake_name' back to real secret in stream!`. `alex` has no rule matching it, so it passed through untouched — a useful reminder that Poppy only hides what you've told it to look for.
 
 ### Generator types
 
@@ -254,9 +267,9 @@ This native approach keeps the project dependency-light (detection and generatio
 
 v1 focuses on structured developer secrets via regex, which keeps it fast and dependency-light. v2 will add general PII/PHI detection (names, addresses, etc.) for broader DLP coverage. [Microsoft Presidio](https://microsoft.github.io/presidio/) is a candidate for this, since it can handle unstructured entity recognition that regex isn't suited for.
 
-Poppy is built for Claude and forwards to `api.anthropic.com` only. The detection, vault, and stream-rehydration logic is provider-agnostic, so other providers are feasible, but nothing else has been tested, so support is Claude-only for now.
+Poppy is built for Claude and forwards to `api.anthropic.com` only. The detection, vault, and stream-rehydration logic is provider-agnostic, so other providers are feasible, but nothing else has been tested, so support is Claude-only for now. Looking for PR requests to support other LLM's like OpenAI and Gemini. 
 
 
 ## License
 
-MIT. *(No `LICENSE` file is committed yet. Add one at the repository root to make this official.)*
+MIT
