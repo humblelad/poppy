@@ -1,6 +1,8 @@
 # Poppy: A Local Secret Firewall for LLM Traffic
 
 *Built for Claude Currently.*
+<img src="https://github.com/humblelad/poppy/blob/5b718ae080724ad77bc05afc7e9879604ddc3aff/images/poppy.png" width="300" height="300">
+
 
 Coding agents read your files. When Claude Code opens a `.env`, your production credentials go to a third-party API — not because anyone decided to send them, but because the agent needed context.
 
