@@ -41,7 +41,7 @@ async def proxy(request: Request, path: str):
         logger.info("Payload contained secrets! Vaulted and swapped with semantic fakes.")
         for rule_name, real_secret in security_engine.last_hits:
             fake_secret = security_engine.vault.reverse_mapping.get(real_secret, "?")
-            logger.info(f"DEBUG: [{rule_name}] Swapped '{real_secret}' -> '{fake_secret}' before sending to LLM")
+            # logger.info(f"DEBUG: [{rule_name}] Swapped '{real_secret}' -> '{fake_secret}' before sending to LLM")
     
     # Build forward request
     req = http_client.build_request(
