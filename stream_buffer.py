@@ -135,7 +135,8 @@ class StreamRehydrator:
     def _rehydrate(self, text: str) -> str:
         for fake, real in self.pairs:
             if fake in text:
-                logger.info(f"DEBUG: Rehydrated fake secret '{fake}' back to real secret in stream!")
+                #commented out this as this was used during testing demo and ss generation
+                # logger.info(f"DEBUG: Rehydrated fake secret '{fake}' back to real secret in stream!")
                 text = text.replace(fake, real)
         return text
 
